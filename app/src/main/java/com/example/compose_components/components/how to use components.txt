@@ -1,0 +1,838 @@
+package com.example.compose_components.components
+
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.app.compose_components.R
+import com.app.compose_components.model.PutAwayDetail
+import com.app.compose_components.model.PutAwayItem
+import com.app.compose_components.presentation.components.ConfirmDialog
+import com.app.compose_components.presentation.components.DropDownText
+import com.app.compose_components.presentation.components.HeadingTextFiled
+import com.app.compose_components.presentation.components.MultiChooseDialog
+import com.app.compose_components.presentation.components.ProgressDialog
+import com.app.compose_components.presentation.components.compose_componentsDialog
+import com.app.compose_components.presentation.components.compose_componentsToolbar
+import com.app.compose_components.presentation.components.TableItemRow
+import com.app.compose_components.presentation.components.ZebraBroadcastComponent
+import com.app.compose_components.presentation.params.AddSerialScreenParam
+import com.app.compose_components.presentation.viewmodel.LocationTransferUiState
+import com.app.compose_components.presentation.viewmodel.LocationTransferViewModel
+import com.app.compose_components.presentation.viewmodel.PutAwayField
+import com.app.compose_components.theme.DarkBlue
+import com.app.compose_components.theme.GrayColor
+import com.app.compose_components.theme.GreenColor
+
+@Composable
+fun LocationTransferScreenRoute(
+    viewModel: LocationTransferViewModel = hiltViewModel(),
+    navigateToInfoItem: (String) -> Unit,
+    onBackPress: () -> Unit,
+    navigateToViewItem: (PutAwayDetail) -> Unit,
+    navigationToAddSerialItemScreen: (AddSerialScreenParam) -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    var dropDownType by remember {
+        mutableStateOf(DropDownType.None)
+    }
+
+    var barCodeType by remember {
+        mutableStateOf(BarcodeType.None)
+    }
+
+    var deleteDialogState by remember {
+        mutableStateOf<PutAwayItem?>(null)
+    }
+
+    ZebraBroadcastComponent {
+        viewModel.barcodeResult(it, barCodeType)
+    }
+
+
+    LaunchedEffect(key1 = uiState.moveToAddSerialScreen, block = {
+        if (uiState.moveToAddSerialScreen != null) {
+            navigationToAddSerialItemScreen(uiState.moveToAddSerialScreen!!)
+            viewModel.clearNavState()
+        }
+    })
+
+
+    LocationTransferScreen(
+        uiState = uiState,
+        onBackPress = viewModel::onBackPressWithAlert,
+        onSave = viewModel::addPutAway,
+        onInfoItem = {
+            it?.let(navigateToInfoItem) ?: ""
+        },
+        onViewItem = navigateToViewItem,
+        onEditItem = viewModel::onEditItem,
+        onDeleteItem = {
+            deleteDialogState = it
+        },
+        onDropDownClick = {
+            dropDownType = it
+        },
+        onAdd = viewModel::addItemLits,
+        onImport = viewModel::onImport,
+        onChangeField = viewModel::changePutAwayField,
+        openBarCode = {
+            barCodeType = it
+        },
+        onFocusChange = viewModel::focusChangeItems,
+        focusChangeDone = viewModel::focusChangeDone,
+        onClickField = viewModel::onClickOnField,
+        setError = viewModel::setError,
+        onCloseProject = viewModel::onClickProjectCancleBtn
+    )
+
+    LaunchedEffect(key1 = uiState.openDropDown, block = {
+        uiState.openDropDown?.let {
+            if (it != DropDownType.None) {
+                dropDownType = it
+            }
+        }
+    })
+
+    if (dropDownType != DropDownType.None) {
+        MultiChooseDialog(
+            title = when (dropDownType) {
+                DropDownType.Location -> {
+                    stringResource(R.string.select_location)
+                }
+
+                DropDownType.BinFrom -> {
+                    stringResource(R.string.select_bin)
+                }
+
+                DropDownType.BinTO -> {
+                    stringResource(R.string.select_bin)
+                }
+
+                DropDownType.Project -> {
+                    stringResource(R.string.select_project)
+                }
+
+                DropDownType.Item -> {
+                    stringResource(R.string.select_item)
+                }
+
+                else -> ""
+            },
+            searchHitText = when (dropDownType) {
+                DropDownType.Location -> {
+                    stringResource(id = R.string.search_location)
+                }
+
+                DropDownType.BinFrom -> {
+                    stringResource(R.string.search_bin)
+                }
+
+                DropDownType.BinTO -> {
+                    stringResource(R.string.search_bin)
+                }
+
+                DropDownType.Project -> {
+                    stringResource(R.string.search_project)
+                }
+
+                DropDownType.Item -> {
+                    stringResource(R.string.search_item)
+                }
+
+                else -> ""
+            },
+            list = when (dropDownType) {
+                DropDownType.Location -> {
+                    viewModel.getLocationToList()
+                }
+
+                DropDownType.BinFrom -> {
+                    viewModel.getBinToList(true)
+                }
+
+                DropDownType.BinTO -> {
+                    viewModel.getBinToList(false)
+                }
+
+                DropDownType.Project -> {
+                    viewModel.getProjectList()
+                }
+
+                DropDownType.Item -> {
+                    viewModel.getItemStringList()
+                }
+
+                DropDownType.LotNumber -> {
+                    viewModel.getLotNumberList()
+                }
+
+                DropDownType.SO -> {
+                    viewModel.getSoList()
+                }
+
+                else -> emptyList()
+            },
+            selectText = when (dropDownType) {
+                DropDownType.Location -> {
+                    uiState.locationTo
+                }
+
+                DropDownType.BinFrom -> {
+                    uiState.binFrom
+                }
+
+                DropDownType.BinTO -> {
+                    uiState.binTo
+                }
+
+                DropDownType.Project -> {
+                    uiState.project
+                }
+
+                DropDownType.Item -> {
+                    uiState.currentItemId
+                }
+
+                else -> ""
+            },
+            onDone = {
+                when (dropDownType) {
+                    DropDownType.Location -> {
+                        viewModel.onDropDownSelect(PutAwayField.LOCATION_TO, it)
+                    }
+
+                    DropDownType.BinFrom -> {
+                        viewModel.changePutAwayField(PutAwayField.BIN_FROM, it)
+                    }
+
+                    DropDownType.BinTO -> {
+                        viewModel.changePutAwayField(PutAwayField.BIN_TO, it)
+                    }
+
+                    DropDownType.Project -> {
+                        viewModel.changePutAwayField(PutAwayField.PROJECT, it)
+                    }
+
+                    DropDownType.Item -> {
+                        viewModel.changePutAwayField(PutAwayField.ITEM_NAME, it)
+                    }
+
+                    else -> {}
+                }
+                dropDownType = DropDownType.None
+                viewModel.clearDropDownType()
+            },
+            onCancel = {
+                dropDownType = DropDownType.None
+                viewModel.clearDropDownType()
+            }
+        )
+    }
+
+    uiState.uiMessage?.let {
+        compose_componentsDialog(
+            text = if (it.resMessage != null && it.params != null) stringResource(
+                id = it.resMessage,
+                *(it.params)
+            ) else if (it.resMessage != null) stringResource(id = it.resMessage) else it.message
+                ?: "",
+            onConfirmClick = it.uiAction ?: viewModel::dismissErrorDialog,
+            onDismissRequest = it.uiDismissAction ?: viewModel::dismissErrorDialog,
+            shouldShowCancelButton = it.uiAction != null && it.uiDismissAction == null,
+            onCancelClick = it.uiActionCancel ?: viewModel::dismissErrorDialog
+        )
+    }
+
+    uiState.alertResMsg?.let {
+        compose_componentsDialog(
+            title = stringResource(id = uiState.alertResTitle ?: R.string.app_name),
+            text = stringResource(id = it),
+            onConfirmClick = onBackPress,
+            onDismissRequest = viewModel::dismissAlert
+        )
+    }
+
+    uiState.navigateToBack?.let {
+        if (it) {
+            onBackPress()
+            viewModel.clearNavState()
+        }
+    }
+
+    if (uiState.isLoading) {
+        ProgressDialog {
+            viewModel.changeProgressDialogState()
+        }
+    }
+
+    if (deleteDialogState != null) {
+        ConfirmDialog(
+            title = stringResource(R.string.delete_item),
+            text = stringResource(R.string.are_you_sure_you_want_to_delete_this_item),
+            onConfirm = {
+                viewModel.removeItem(deleteDialogState!!)
+                deleteDialogState = null
+            },
+            onCancel = {
+                deleteDialogState = null
+            }
+        )
+    }
+}
+
+@Composable
+fun LocationTransferScreen(
+    uiState: LocationTransferUiState,
+    onBackPress: () -> Unit,
+    onSave: () -> Unit,
+    onViewItem: (PutAwayDetail) -> Unit,
+    onInfoItem: (String?) -> Unit,
+    onEditItem: (PutAwayItem) -> Unit,
+    onDeleteItem: (PutAwayItem) -> Unit,
+    onDropDownClick: (DropDownType) -> Unit,
+    onAdd: () -> Unit,
+    onImport: () -> Unit,
+    onChangeField: (PutAwayField, String) -> Unit,
+    openBarCode: (BarcodeType) -> Unit,
+    onFocusChange: (FocusChangeItems) -> Unit,
+    focusChangeDone: () -> Unit,
+    onClickField: (PutAwayField) -> Unit,
+    setError: (Int) -> Unit,
+    onCloseProject: () -> Unit,
+) {
+    var selectedItem by remember {
+        mutableStateOf<PutAwayItem?>(null)
+    }
+
+    val focusManager = LocalFocusManager.current
+    val itemFocusRequest = remember {
+        FocusRequester()
+    }
+    val lpnFocusRequest = remember {
+        FocusRequester()
+    }
+    val quantityFocusRequest = remember {
+        FocusRequester()
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        compose_componentsToolbar(
+            title = stringResource(R.string.location_transfer),
+            onBack = onBackPress,
+        )
+
+        Column(
+            modifier = Modifier
+                .padding(top = 6.dp)
+                .weight(1f)
+                .verticalScroll(
+                    rememberScrollState()
+                )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(color = Color.White)
+                    .padding(20.dp)
+            ) {
+                AnimatedVisibility(visible = !uiState.locationToHidden) {
+                    DropDownText(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        onClick = {
+                            if (uiState.locationToEnabled)
+                                onDropDownClick(DropDownType.Location)
+                        },
+                        headingText = stringResource(R.string.location_to),
+                        value = uiState.locationTo,
+                        isEnable = uiState.locationToEnabled,
+                        textStyle = MaterialTheme.typography.labelLarge.copy(color = DarkBlue),
+                        onDropDownClick = {
+                            if (uiState.locationToEnabled)
+                                onDropDownClick(DropDownType.Location)
+                        }
+                    )
+                    Spacer(modifier = Modifier.size(20.dp))
+                }
+                DropDownText(
+                    headingText = stringResource(R.string.bin_from),
+                    value = uiState.binFrom,
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    onClick = {
+                        onDropDownClick(DropDownType.BinFrom)
+                    },
+                    isEnable = true,
+                    textStyle = MaterialTheme.typography.labelLarge,
+                    showBarcode = true,
+                    isFocused = true,
+                    onFocus = {
+                        openBarCode(BarcodeType.BIN_FROM)
+                    },
+                    onDropDownClick = {
+                        onDropDownClick(DropDownType.BinFrom)
+                    },
+                    onClickTrailingIcon = {
+                        openBarCode(BarcodeType.BIN_FROM)
+                    }
+                )
+                Spacer(modifier = Modifier.size(20.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    HeadingTextFiled(
+                        headingText = stringResource(R.string.item),
+                        value = uiState.currentItemId,
+                        onValueChange = { onChangeField(PutAwayField.ITEM_NAME, it) },
+                        textStyle = MaterialTheme.typography.labelLarge,
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .onFocusChanged {
+                                if (!it.hasFocus) {
+                                    if (uiState.itemEnable)
+                                        onFocusChange(FocusChangeItems.Item)
+                                }else{
+                                    openBarCode(BarcodeType.ITEM);
+                                }
+                            },
+                        showBarcode = true,
+                        isContainerEnabled = uiState.itemEnable,
+                        requestFocus = itemFocusRequest,
+                        onClickTrailingIcon = {
+                            if (uiState.itemEnable)
+                                openBarCode(BarcodeType.ITEM)
+                        },
+                        trailingIcon = {
+                            Icon(
+                                modifier = Modifier.clickable {
+                                    if (uiState.itemEnable)
+                                        onDropDownClick(DropDownType.Item)
+                                },
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                            )
+                        }
+                    )
+                    Spacer(modifier = Modifier.size(20.dp))
+                    OutlinedButton(
+                        onClick = onAdd,
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, color = MaterialTheme.colorScheme.primary),
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.size(width = 60.dp, height = 34.dp)
+                    ) {
+                        if (uiState.editState == null) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.size(4.dp))
+                        }
+                        Text(text = stringResource(if (uiState.editState == null) R.string.add else R.string.edit))
+                    }
+                }
+                Spacer(modifier = Modifier.size(20.dp))
+                AnimatedVisibility(visible = !uiState.projectHidden) {
+                    DropDownText(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        onClick = {
+                            onDropDownClick(DropDownType.Project)
+                        },
+                        headingText = stringResource(R.string.project),
+                        value = uiState.project,
+                        textStyle = MaterialTheme.typography.labelLarge.copy(color = DarkBlue),
+                        showClose = uiState.projectCancleBtnEnabled,
+                        onDropDownClick = onCloseProject
+                    )
+                    Spacer(modifier = Modifier.size(20.dp))
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    HeadingTextFiled(
+                        headingText = stringResource(id = R.string.lpn),
+                        value = uiState.lpn,
+                        onValueChange = { onChangeField(PutAwayField.LPN, it) },
+                        textStyle = MaterialTheme.typography.labelLarge,
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .onFocusChanged {
+                                if (!it.hasFocus) {
+                                    if (uiState.lpnEnabled)
+                                        onFocusChange(FocusChangeItems.LPN)
+                                }
+                            },
+                        showBarcode = true,
+                        enabled = uiState.lpnEnabled,
+                        isContainerEnabled = uiState.lpnEnabled,
+                        requestFocus = lpnFocusRequest,
+                        onClickTrailingIcon = {
+                            if (uiState.lpnEnabled)
+                                openBarCode(BarcodeType.LPN)
+                        }
+                    )
+                    Spacer(modifier = Modifier.size(20.dp))
+                    OutlinedButton(
+                        onClick = onImport,
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, color = MaterialTheme.colorScheme.primary),
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.size(width = 70.dp, height = 34.dp)
+                    ) {
+                        Text(text = stringResource(R.string._import))
+                    }
+                }
+                Spacer(modifier = Modifier.size(20.dp))
+                DropDownText(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    onClick = {
+                        if (uiState.binToEnabled)
+                            onDropDownClick(DropDownType.BinTO)
+                    },
+                    headingText = stringResource(R.string.bin_to),
+                    value = uiState.binTo,
+                    isEnable = uiState.binToEnabled,
+                    textStyle = MaterialTheme.typography.labelLarge.copy(color = DarkBlue),
+//                    showBarcode = true,
+//                    onFocus = {
+//                        if (uiState.binToEnabled) openBarCode(BarcodeType.BIN_TO)
+//                    },
+//                    onClickTrailingIcon = { if (uiState.binToEnabled) openBarCode(BarcodeType.BIN_TO) },
+                    onDropDownClick = { if (uiState.binToEnabled) onDropDownClick(DropDownType.BinTO) },
+                )
+                Spacer(modifier = Modifier.size(20.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    HeadingTextFiled(
+                        headingText = stringResource(id = R.string.quantity),
+                        value = uiState.quantity,
+                        onValueChange = { onChangeField(PutAwayField.QUANTITY, it) },
+                        textStyle = MaterialTheme.typography.labelLarge,
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                        ),
+                        requestFocus = quantityFocusRequest,
+                        modifier = Modifier
+                            .weight(1f)
+                            .onFocusChanged {
+                                if (!it.hasFocus) {
+                                    if (!it.hasFocus) {
+                                        onFocusChange(FocusChangeItems.QUANTITY)
+                                    }
+                                }
+                            }
+                            .clickable { onClickField(PutAwayField.QUANTITY) },
+                    )
+                    Spacer(modifier = Modifier.size(20.dp))
+                    HeadingTextFiled(
+                        headingText = stringResource(R.string.so),
+                        value = uiState.so,
+                        onValueChange = { onChangeField(PutAwayField.SO, it) },
+                        textStyle = MaterialTheme.typography.labelLarge,
+                        singleLine = true,
+                        enabled = uiState.soDropDownEnabled,
+                        isContainerEnabled = uiState.soDropDownEnabled,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .onFocusChanged {
+                                if (!it.hasFocus) {
+                                    if (uiState.soDropDownEnabled) onFocusChange(FocusChangeItems.SO)
+                                }
+                            }
+                            .clickable { if (uiState.soDropDownEnabled) onClickField(PutAwayField.SO) },
+                        showBarcode = true,
+                        onClickTrailingIcon = {
+                            if (uiState.soDropDownEnabled) openBarCode(
+                                BarcodeType.SO
+                            )
+                        }
+                    )
+                }
+                Spacer(modifier = Modifier.size(20.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    HeadingTextFiled(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                if (uiState.lotNumberDropDownEnabled && uiState.lotNumberEnabled) {
+                                    onDropDownClick(DropDownType.LotNumber)
+                                }
+                            },
+                        headingText = stringResource(R.string.lot_number),
+                        value = uiState.lotNumber,
+                        enabled = uiState.lotNumberEnabled,
+                        isContainerEnabled = uiState.lotNumberEnabled,
+                        onValueChange = { onChangeField(PutAwayField.LOT_NO, it) },
+                        textStyle = MaterialTheme.typography.labelLarge,
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(
+                            onNext = {
+                                if (uiState.lotNumberEnabled) focusManager.moveFocus(
+                                    FocusDirection.Down
+                                )
+                            }
+                        ),
+                    )
+                    AnimatedVisibility(visible = !uiState.loggerHidden) {
+                        Spacer(modifier = Modifier.size(20.dp))
+                        HeadingTextFiled(
+                            modifier = Modifier
+                                .weight(1f)
+                                .onFocusChanged {
+                                    if (!it.hasFocus) {
+                                        onFocusChange(FocusChangeItems.LOGGER)
+                                    }
+                                },
+                            headingText = stringResource(R.string.lotter),
+                            value = uiState.lotter,
+                            onValueChange = { onChangeField(PutAwayField.LOTTER, it) },
+                            textStyle = MaterialTheme.typography.labelLarge,
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(
+                                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                            ),
+                        )
+                    }
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(color = GrayColor)
+                    .padding(start = 20.dp, end = 20.dp, bottom = 20.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.item_details),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = DarkBlue,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Button(
+                            onClick = {
+                                if (selectedItem != null) {
+                                    onInfoItem(selectedItem?.itemDetail?.itemId ?: "")
+                                } else {
+                                    setError(R.string.please_select_item)
+                                }
+                            },
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                            modifier = Modifier.height(30.dp)
+                        ) {
+                            Text(text = stringResource(R.string.info))
+                        }
+                    }
+                }
+
+                val headerList = listOf(
+                    stringResource(R.string.item_id),
+                    stringResource(R.string.quantity_),
+                    stringResource(R.string.bin).replace("*", ""),
+                    stringResource(R.string.actions)
+                )
+
+                TableItemRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = DarkBlue,
+                            RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
+                        )
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    isHeader = true,
+                    valueList = headerList
+                )
+
+                uiState.items.take(5).forEach { item ->
+                    TableItemRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = if (selectedItem == item) MaterialTheme.colorScheme.surface.copy(
+                                    alpha = 0.4f
+                                ) else MaterialTheme.colorScheme.surface,
+                            )
+                            .clickable {
+                                selectedItem =
+                                    if (selectedItem != null && selectedItem == item) null else item
+                            }
+                            .padding(horizontal = 20.dp, vertical = 10.dp),
+                        valueList = listOf(
+                            item.itemDetail?.itemId.toString(),
+                            item.itemDetail?.qty.toString(),
+                            item.itemDetail?.binTo.toString(),
+                            ""
+                        ),
+                        action = {
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 3.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_view),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(17.dp)
+                                        .clickable {
+                                            onViewItem(
+                                                PutAwayDetail(
+                                                    itemId = item.itemDetail?.itemId,
+                                                    location = item.itemDetail?.locationFrom,
+                                                    bin = item.itemDetail?.binTo,
+                                                    lpn = item.lpnDetail?.lpn,
+                                                    item = item.itemDetail?.itemId,
+                                                    quantity = "${item.itemDetail?.qty ?: 0}",
+                                                    lotNumber = item.itemDetail?.lotFrom,
+                                                    rccptDate = "",
+                                                    so = item.itemDetail?.soOrderId,
+                                                    logger = item.itemDetail?.logger,
+                                                    project = item.itemDetail?.projectId
+                                                )
+                                            )
+                                        }
+                                )
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_edit),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(17.dp)
+                                        .clickable {
+                                            onEditItem(item)
+                                        }
+                                )
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_delete),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(17.dp)
+                                        .clickable {
+                                            onDeleteItem(item)
+                                        }
+                                )
+                            }
+                        }
+                    )
+                }
+            }
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            Button(
+                onClick = onSave,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(6.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = GreenColor)
+            ) {
+                Text(
+                    text = stringResource(id = R.string.save),
+                    style = MaterialTheme.typography.labelMedium.copy(fontSize = 18.sp),
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+        }
+    }
+
+    LaunchedEffect(key1 = uiState.currentFocusView, block = {
+        if (uiState.currentFocusView == FocusChangeItems.Item) {
+            itemFocusRequest.requestFocus()
+        } else if (uiState.currentFocusView == FocusChangeItems.LPN) {
+            lpnFocusRequest.requestFocus()
+        } else if (uiState.currentFocusView == FocusChangeItems.QUANTITY) {
+            quantityFocusRequest.requestFocus()
+        }
+        focusChangeDone()
+    })
+}
